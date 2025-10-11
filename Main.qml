@@ -220,7 +220,7 @@ Window {
             text: "HIZMV"
             width: 60
             onClicked: {
-                serial.sendCommand(":CHANnel1:FUNCtion \"HIZMVI\"\r\n")
+                serial.sendCommand(":CHANnel0:FUNCtion \"HIZMVI\"\r\n")
             }
         }
         Button {
@@ -230,7 +230,7 @@ Window {
             anchors.left: btn_hizmv.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:FUNCtion \"FVMI\"\r\n")
+                serial.sendCommand(":CHANnel0:FUNCtion \"FVMI\"\r\n")
             }
         }
         Button {
@@ -240,7 +240,7 @@ Window {
             anchors.left: btn_fvmi.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:FUNCtion \"FIMV\"\r\n")
+                serial.sendCommand(":CHANnel0:FUNCtion \"FIMV\"\r\n")
             }
         }
         Button {
@@ -250,7 +250,7 @@ Window {
             anchors.left: btn_fimv.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:FUNCtion \"FVMV\"\r\n")
+                serial.sendCommand(":CHANnel0:FUNCtion \"FVMV\"\r\n")
             }
         }
         Button {
@@ -260,7 +260,7 @@ Window {
             anchors.left: btn_fvmv.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:FUNCtion \"FIMI\"\r\n")
+                serial.sendCommand(":CHANnel0:FUNCtion \"FIMI\"\r\n")
             }
         }
     }
@@ -278,7 +278,7 @@ Window {
             width: 60
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:CURRent:RANGe 80e-3\r\n")
+                serial.sendCommand(":CHANnel0:CURRent:RANGe 80e-3\r\n")
             }
         }
         Button {
@@ -288,7 +288,7 @@ Window {
             anchors.left: btn_range_80mA.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:CURRent:RANGe 2e-3\r\n")
+                serial.sendCommand(":CHANnel0:CURRent:RANGe 2e-3\r\n")
             }
         }
         Button {
@@ -298,7 +298,7 @@ Window {
             anchors.left: btn_range_2mA.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:CURRent:RANGe 200e-6\r\n")
+                serial.sendCommand(":CHANnel0:CURRent:RANGe 200e-6\r\n")
             }
         }
         Button {
@@ -308,7 +308,7 @@ Window {
             anchors.left: btn_range_200uA.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:CURRent:RANGe 20e-6\r\n")
+                serial.sendCommand(":CHANnel0:CURRent:RANGe 20e-6\r\n")
             }
         }
         Button {
@@ -318,7 +318,7 @@ Window {
             anchors.left: btn_range_20uA.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel1:CURRent:RANGe 5e-6\r\n")
+                serial.sendCommand(":CHANnel0:CURRent:RANGe 5e-6\r\n")
             }
         }
     }
@@ -363,7 +363,7 @@ Window {
                     if (!isNaN(value)) {
                         console.log("Current float value: ", value)
                         serial.sendCommand(
-                                    ":CHANnel1:VOLTage:LEVel " + value + " \r\n")
+                                    ":CHANnel0:VOLTage:LEVel " + value + " \r\n")
                     } else {
                         console.log("Invalid float input")
                     }
@@ -413,7 +413,7 @@ Window {
                     if (!isNaN(value)) {
                         console.log("Current float value: ", value)
                         serial.sendCommand(
-                                    ":CHANnel1:CURRent:LEVel " + value + " \r\n")
+                                    ":CHANnel0:CURRent:LEVel " + value + " \r\n")
                     } else {
                         console.log("Invalid float input")
                     }
@@ -439,7 +439,7 @@ Window {
         running: true
         onTriggered: {
             rect6.color = (rect6.color == "#ff0000") ? "#0000ff" : "#ff0000"
-            serial.sendCommand(":CHANnel1:FETCh?\r\n")
+            serial.sendCommand(":CHANnel0:FETCh?\r\n")
         }
     }
 
