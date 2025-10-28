@@ -7,6 +7,9 @@ Window {
     visible: true
     title: qsTr("Hello World")
 
+    // 定时器正在使用串口标志
+    property bool timerUsingSerial: false
+
     // 串口参数
     Rectangle {
         id: rect1
@@ -214,111 +217,91 @@ Window {
         height: 50
         anchors.top: rect1.bottom
 
-        // 工作模式
-        Button {
-            id: btn_hizmv
-            text: "HIZMV"
-            width: 60
-            onClicked: {
-                serial.sendCommand(":CHANnel0:FUNCtion \"HIZMVI\"\r\n")
+        // 使用 ComboBox 控件选择电流范围
+        ComboBox {
+            id: currentRangeCbb
+            anchors.margins: 5
+            width: 120
+            model: ["80mA", "2mA", "200uA", "20uA", "5uA"]
+            // 设置默认选中项
+            Component.onCompleted: {
+                currentRangeCbb.currentIndex = 1
             }
         }
-        Button {
-            id: btn_fvmi
-            text: "FVMI"
-            width: 60
-            anchors.left: btn_hizmv.right
+
+        // 使用 ComboBox 控件选择工作模式
+        ComboBox {
+            id: modeCbb
+            anchors.left: currentRangeCbb.right
             anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:FUNCtion \"FVMI\"\r\n")
+            width: 120
+            model: ["HIZMV", "FVMI", "FIMV", "FVMV", "FIMI"]
+            Component.onCompleted: {
+                modeCbb.currentIndex = 0
             }
         }
+
+        // 按下确定按钮发送当前设置
         Button {
-            id: btn_fimv
-            text: "FIMV"
-            width: 60
-            anchors.left: btn_fvmi.right
+            id: btn_func_set
+            text: "确定"
+            anchors.left: modeCbb.right
             anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel0:FUNCtion \"FIMV\"\r\n")
-            }
-        }
-        Button {
-            id: btn_fvmv
-            text: "FVMV"
-            width: 60
-            anchors.left: btn_fimv.right
-            anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:FUNCtion \"FVMV\"\r\n")
-            }
-        }
-        Button {
-            id: btn_fimi
-            text: "FIMI"
-            width: 60
-            anchors.left: btn_fvmv.right
-            anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:FUNCtion \"FIMI\"\r\n")
+                // 读取电流范围并将其转为浮点型
+                var buf = currentRangeCbb.currentText
+                if (buf.indexOf("uA") !== -1) {
+                    buf = parseFloat(buf) * 1e-6
+                    buf = buf.toFixed(6)
+                } else if (currentRangeCbb.currentText.indexOf("mA") !== -1) {
+                    buf = parseFloat(buf) * 1e-3
+                    buf = buf.toFixed(3)
+                } else {
+                    buf = parseFloat(buf)
+                    buf = buf.toFixed(1)
+                }
+                console.log("Selected current range in A: ", buf)
+                // 发送设置电流范围指令
+                var mode = modeCbb.currentText
+                serial.sendCommand(":CHANnel0:FUNCtion \"" + mode + "\"," + buf + "\r\n")
             }
         }
     }
 
-    // SMU 电流范围
+    // 查询电流范围
     Rectangle {
         id: rect3
         height: 50
         anchors.top: rect2.bottom
-
-        // 电流范围
+        // 发送模式查询指令并解析和显示返回状态
         Button {
-            id: btn_range_80mA
-            text: "Ext 80mA"
-            width: 60
+            id: btn_query_current_range
+            text: "查询电流范围"
+            width: 80
             anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:CURRent:RANGe 80e-3\r\n")
+            // 显示当前电流范围
+            Text {
+                id: txt_current_range
+                anchors.bottom: btn_query_current_range.bottom
+                anchors.left: btn_query_current_range.right
+                text: ""
             }
-        }
-        Button {
-            id: btn_range_2mA
-            text: "2mA"
-            width: 60
-            anchors.left: btn_range_80mA.right
-            anchors.margins: 5
             onClicked: {
-                serial.sendCommand(":CHANnel0:CURRent:RANGe 2e-3\r\n")
-            }
-        }
-        Button {
-            id: btn_range_200uA
-            text: "200uA"
-            width: 60
-            anchors.left: btn_range_2mA.right
-            anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:CURRent:RANGe 200e-6\r\n")
-            }
-        }
-        Button {
-            id: btn_range_20uA
-            text: "20uA"
-            width: 60
-            anchors.left: btn_range_200uA.right
-            anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:CURRent:RANGe 20e-6\r\n")
-            }
-        }
-        Button {
-            id: btn_range_5uA
-            text: "5uA"
-            width: 60
-            anchors.left: btn_range_20uA.right
-            anchors.margins: 5
-            onClicked: {
-                serial.sendCommand(":CHANnel0:CURRent:RANGe 5e-6\r\n")
+                // 等待定时器完成当前轮询
+                while(myTimer.running && timerUsingSerial) {
+                    // 等待
+                }
+                myTimer.running = false
+                var range0 = serial.sendCommandAndReadResponse(":CHANnel0:CURRent:RANGe?\r\n")
+                console.log("Current range: " + range0)
+                var range1 = serial.sendCommandAndReadResponse(":CHANnel1:CURRent:RANGe?\r\n")
+                console.log("Current range: " + range1)
+                var range2 = serial.sendCommandAndReadResponse(":CHANnel2:CURRent:RANGe?\r\n")
+                console.log("Current range: " + range2)
+                var range3 = serial.sendCommandAndReadResponse(":CHANnel3:CURRent:RANGe?\r\n")
+                console.log("Current range: " + range3)
+                txt_current_range.text = "CH0:" + range0 + " CH1:" + range1 + " CH2:" + range2 + " CH3:" + range3
+                myTimer.running = true
             }
         }
     }
@@ -436,10 +419,35 @@ Window {
         id: myTimer
         interval: 500
         repeat: true
-        running: true
+        running: false
         onTriggered: {
             rect6.color = (rect6.color == "#ff0000") ? "#0000ff" : "#ff0000"
-            serial.sendCommand(":CHANnel0:FETCh?\r\n")
+            timerUsingSerial = true
+            var buf = serial.sendCommandAndReadResponse("FETCh?\r\n")
+            timerUsingSerial = false
+            console.log("Fetched Data: " + buf)
+            voltageModel.clear() // 清空现有数据
+            function formatVoltage(v) {
+                return 0.001*v.toFixed(6) + " V"
+            }
+            function formatCurrent(i) {
+                return 0.001*i.toFixed(6) + " A"
+            }
+
+            var measurements = buf.split(",")
+            for (var i = 0; i < measurements.length; i++) {
+                var parts = measurements[i].match(/([A-Z]+)(-?\d+(\.\d+)?)/)
+                if (parts && parts.length >= 3) {
+                    var type = parts[1]
+                    var value = parseFloat(parts[2])
+                    console.log("ch:", i, "type:", type, "value:", value)
+                    if (type.indexOf("MV") !== -1) {
+                        voltageModel.append({ "string": "CH" + i + " Voltage: " + formatVoltage(value) })
+                    } else if (type.indexOf("MI") !== -1) {
+                        voltageModel.append({ "string": "CH" + i + " Current: " + formatCurrent(value) })
+                    }
+                }
+             }
         }
     }
 
@@ -467,42 +475,44 @@ Window {
             }
         }
 
-        Connections {
-            target: serial
-            onReadData: data => {
-                // console.log(data)
-                updateVoltages(String(data))
-            }
-            // 解析并更新电压电流值
-            function updateVoltages(msg) {
-                voltageModel.clear() // 清空现有数据
-                var voltages = parseVoltages(msg) // 解析新的数据
-                for (var i = 0; i < voltages.length; i++) {
-                    voltageModel.append({ "string": voltages[i] }) // 将新数据添加到模型
-                }
-            }
+        // Connections {
+        //     target: serial
+        //     onReadData: data => {
+        //         console.log(data)
+        //         updateVoltages(String(data))
+        //     }
+        //     // 解析并更新电压电流值
+        //     function updateVoltages(msg) {
+        //         voltageModel.clear() // 清空现有数据
+        //         var voltages = parseVoltages(msg) // 解析新的数据
+        //         for (var i = 0; i < voltages.length; i++) {
+        //             voltageModel.append({ "string": voltages[i] }) // 将新数据添加到模型
+        //         }
+        //     }
 
-            function parseVoltages(msg) {
-                var voltages = msg.split(",")
-                var results = []
-                for (var i = 0; i < voltages.length; i++) {
-                    var parts = voltages[i].split(":")
-                    var voltage = parseFloat(parts[1])
-                    results.push(formatVoltage(voltage))
-                }
-                return results
-            }
+        //     function parseVoltages(msg) {
+        //         var voltages = msg.split(",")
+        //         var results = []
+        //         for (var i = 0; i < voltages.length; i++) {
+        //             var parts = voltages[i].split(":")
+        //             var voltage = parseFloat(parts[1])
+        //             results.push(formatVoltage(voltage))
+        //         }
+        //         return results
+        //     }
 
-            // 格式化电压值
-            function formatVoltage(voltage) {
-                if (voltage >= 1e6) {
-                    return (voltage / 1e6).toFixed(2) + " V"; // 转换为 V
-                } else if (voltage >= 1e3) {
-                    return (voltage / 1e3).toFixed(2) + " mV"; // 转换为 mV
-                } else {
-                    return voltage.toFixed(2) + " uV"; // 转换为 uV
-                }
-            }
-        }
+        //     // 格式化电压值
+        //     function formatVoltage(voltage) {
+        //         if (voltage >= 1e6) {
+        //             return (voltage / 1e6).toFixed(2) + " V"; // 转换为 V
+        //         } else if (voltage >= 1e3) {
+        //             return (voltage / 1e3).toFixed(2) + " mV"; // 转换为 mV
+        //         } else {
+        //             return voltage.toFixed(2) + " uV"; // 转换为 uV
+        //         }
+        //     }
+        // }
     }
+
+
 }

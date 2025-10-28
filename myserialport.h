@@ -32,6 +32,7 @@ class MySerialPort : public QObject {
     Q_INVOKABLE void startPlot(void);
     Q_INVOKABLE void stopPlot(void);
     Q_INVOKABLE void sendCommand(const QString comm);
+    Q_INVOKABLE QString sendCommandAndReadResponse(const QString comm, int timeoutMs = 100);
 
     QString com() const;
     void setCom(const QString &newCom);
@@ -47,9 +48,6 @@ class MySerialPort : public QObject {
 
     float stopBit() const;
     void setStopBit(float newStopBit);
-
-    // 写数据
-    bool writeData(const char *data, int len);
 
   signals:
     void comChanged();

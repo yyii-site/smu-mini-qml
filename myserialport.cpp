@@ -1,5 +1,6 @@
 #include "myserialport.h"
 #include <QSerialPortInfo>
+#include <QDateTime>
 
 MySerialPort::MySerialPort(QObject *parent)
     : QObject{parent} {
@@ -9,14 +10,14 @@ MySerialPort::MySerialPort(QObject *parent)
     m_parity = "No";
     m_stopBit = 1;
 
-    // 数据接收
-    connect(&m_serial, &QSerialPort::readyRead, this, [=]() {
-        if (m_serial.canReadLine()) {
-            //读取所有可用数据
-            QByteArray data = m_serial.readAll();
-            emit readData(data);
-        }
-    });
+    // 异步串口数据接收
+    // connect(&m_serial, &QSerialPort::readyRead, this, [=]() {
+    //     if (m_serial.canReadLine()) {
+    //         //读取所有可用数据
+    //         QByteArray data = m_serial.readAll();
+    //         emit readData(data);
+    //     }
+    // });
 }
 
 QStringList MySerialPort::availableList() {
@@ -85,9 +86,55 @@ void MySerialPort::stopPlot() {
 }
 
 void MySerialPort::sendCommand(const QString comm) {
+    if (!m_serial.isOpen()) {
+        return;
+    }
+
     QByteArray byteArray = comm.toUtf8();
     const char* cString = byteArray.constData();
-    writeData(cString, strlen(cString));
+
+    QMutexLocker lock(&m_mutex);
+    m_serial.write(cString, strlen(cString));
+    if (!m_serial.waitForBytesWritten(100)) {
+        // 串口数据发送超时
+    }
+}
+
+QString MySerialPort::sendCommandAndReadResponse(const QString comm, int timeoutMs) {
+    if (!m_serial.isOpen()) {
+        return QString();
+    }
+
+    QByteArray byteArray = comm.toUtf8();
+    const char* cString = byteArray.constData();
+
+    QMutexLocker lock(&m_mutex);
+    m_serial.clear();
+    m_serial.write(cString, strlen(cString));
+    if (!m_serial.waitForBytesWritten(100)) {
+        return QString();
+    }
+
+    QByteArray responseLine;
+    qint64 startTime = QDateTime::currentMSecsSinceEpoch();
+    while (QDateTime::currentMSecsSinceEpoch() - startTime < timeoutMs) {
+        // 阻塞等待直到有数据可读 (不超过剩余超时时间)
+        if (m_serial.waitForReadyRead(10)) { // 每次等待 100ms
+
+            // 使用 readLine() 尝试读取直到 0x0A (或超时)
+            if (m_serial.canReadLine()) {
+                responseLine = m_serial.readLine(256); // 限制读取长度
+
+                // 检查是否以 0x0A 结束 (readLine() 应该已经包含它)
+                if (responseLine.endsWith('\n')) {
+                    // 找到完整响应
+                    return QString::fromUtf8(responseLine).trimmed();
+                }
+            }
+        }
+    }
+    // 超时未读取到完整行
+    return QString();
 }
 
 QString MySerialPort::com() const {
@@ -143,18 +190,4 @@ void MySerialPort::setStopBit(float newStopBit) {
         return;
     m_stopBit = newStopBit;
     emit stopBitChanged();
-}
-
-bool MySerialPort::writeData(const char *data, int len) {
-    QMutexLocker lock(&m_mutex);
-    if (!m_serial.isOpen()) {
-        // 串口未打开
-        return false;
-    }
-    m_serial.write(data, len);
-    if (!m_serial.waitForBytesWritten(100)) {
-        // 串口数据发送超时
-        return false;
-    }
-    return true;
 }
