@@ -214,65 +214,97 @@ Window {
     // SMU 工作模式
     Rectangle {
         id: rect2
-        height: 50
-        anchors.top: rect1.bottom
+        anchors.top: rect1.top
+        anchors.left: rect1.right
 
-        // 使用 ComboBox 控件选择电流范围
-        ComboBox {
-            id: currentRangeCbb
-            anchors.margins: 5
-            width: 120
-            model: ["80mA", "2mA", "200uA", "20uA", "5uA"]
-            // 设置默认选中项
-            Component.onCompleted: {
-                currentRangeCbb.currentIndex = 1
-            }
+        Text {
+            id: name
+            text: qsTr("SMU 工作模式")
         }
 
-        // 使用 ComboBox 控件选择工作模式
-        ComboBox {
-            id: modeCbb
-            anchors.left: currentRangeCbb.right
-            anchors.margins: 5
-            width: 120
-            model: ["HIZMV", "FVMI", "FIMV", "FVMV", "FIMI"]
-            Component.onCompleted: {
-                modeCbb.currentIndex = 0
-            }
-        }
+        Column {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
 
-        // 按下确定按钮发送当前设置
-        Button {
-            id: btn_func_set
-            text: "确定"
-            anchors.left: modeCbb.right
-            anchors.margins: 5
-            onClicked: {
-                // 读取电流范围并将其转为浮点型
-                var buf = currentRangeCbb.currentText
-                if (buf.indexOf("uA") !== -1) {
-                    buf = parseFloat(buf) * 1e-6
-                    buf = buf.toFixed(6)
-                } else if (currentRangeCbb.currentText.indexOf("mA") !== -1) {
-                    buf = parseFloat(buf) * 1e-3
-                    buf = buf.toFixed(3)
-                } else {
-                    buf = parseFloat(buf)
-                    buf = buf.toFixed(1)
-                }
-                console.log("Selected current range in A: ", buf)
-                // 发送设置电流范围指令
-                var mode = modeCbb.currentText
-                serial.sendCommand(":CHANnel0:FUNCtion \"" + mode + "\"," + buf + "\r\n")
+            SmuSetFunction {
+                id: smuChannel0Function
+                channelNum: 0
+            }
+
+            SmuSetFunction {
+                id: smuChannel1Function
+                channelNum: 1
+            }
+
+            SmuSetFunction {
+                id: smuChannel2Function
+                channelNum: 2
+            }
+
+            SmuSetFunction {
+                id: smuChannel3Function
+                channelNum: 3
             }
         }
     }
+
+    // 当 SumChannelControl 发出信号，槽函数通过串口发出指令
+    Connections {
+        target: smuChannel0Function
+        onFunctionChanged: msg => {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel1Function
+        onFunctionChanged: msg => {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel2Function
+        onFunctionChanged: msg => {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel3Function
+        onFunctionChanged: (msg) => {
+            serialSendCommand(msg)
+        }
+    }
+
+    function serialSendCommand(msg) {
+        while(myTimer.running && timerUsingSerial) {
+            // 等待
+        }
+        myTimer.running = false
+        serial.sendCommand(msg)
+        myTimer.running = true
+    }
+
+    function serialSendAndRead(msg) {
+        while(myTimer.running && timerUsingSerial) {
+            // 等待
+        }
+        myTimer.running = false
+        var response = serial.sendCommandAndReadResponse(msg)
+        myTimer.running = true
+        return response
+    }
+
+    function serialSendAndReadInTimer(msg) {
+        var response = serial.sendCommandAndReadResponse(msg)
+        return response
+    }
+
 
     // 查询电流范围
     Rectangle {
         id: rect3
         height: 50
-        anchors.top: rect2.bottom
+        anchors.top: rect1.bottom
         // 发送模式查询指令并解析和显示返回状态
         Button {
             id: btn_query_current_range
@@ -287,21 +319,15 @@ Window {
                 text: ""
             }
             onClicked: {
-                // 等待定时器完成当前轮询
-                while(myTimer.running && timerUsingSerial) {
-                    // 等待
-                }
-                myTimer.running = false
-                var range0 = serial.sendCommandAndReadResponse(":CHANnel0:CURRent:RANGe?\r\n")
-                console.log("Current range: " + range0)
-                var range1 = serial.sendCommandAndReadResponse(":CHANnel1:CURRent:RANGe?\r\n")
-                console.log("Current range: " + range1)
-                var range2 = serial.sendCommandAndReadResponse(":CHANnel2:CURRent:RANGe?\r\n")
-                console.log("Current range: " + range2)
-                var range3 = serial.sendCommandAndReadResponse(":CHANnel3:CURRent:RANGe?\r\n")
-                console.log("Current range: " + range3)
+                var range0 = serialSendAndRead(":CHANnel0:CURRent:RANGe?\r\n")
+                console.log("Ch0 current range: " + range0)
+                var range1 = serialSendAndRead(":CHANnel1:CURRent:RANGe?\r\n")
+                console.log("Ch1 current range: " + range1)
+                var range2 = serialSendAndRead(":CHANnel2:CURRent:RANGe?\r\n")
+                console.log("Ch2 current range: " + range2)
+                var range3 = serialSendAndRead(":CHANnel3:CURRent:RANGe?\r\n")
+                console.log("Ch3 current range: " + range3)
                 txt_current_range.text = "CH0:" + range0 + " CH1:" + range1 + " CH2:" + range2 + " CH3:" + range3
-                myTimer.running = true
             }
         }
     }
@@ -345,8 +371,7 @@ Window {
                     let value = parseFloat(num_voltage.text)
                     if (!isNaN(value)) {
                         console.log("Current float value: ", value)
-                        serial.sendCommand(
-                                    ":CHANnel0:VOLTage:LEVel " + value + " \r\n")
+                        serialSendCommand(":CHANnel0:VOLTage:LEVel " + value + " \r\n")
                     } else {
                         console.log("Invalid float input")
                     }
@@ -395,8 +420,7 @@ Window {
                     let value = parseFloat(num_current.text)
                     if (!isNaN(value)) {
                         console.log("Current float value: ", value)
-                        serial.sendCommand(
-                                    ":CHANnel0:CURRent:LEVel " + value + " \r\n")
+                        serialSendCommand(":CHANnel0:CURRent:LEVel " + value + " \r\n")
                     } else {
                         console.log("Invalid float input")
                     }
@@ -419,12 +443,15 @@ Window {
         id: myTimer
         interval: 500
         repeat: true
-        running: false
+        running: true
         onTriggered: {
             rect6.color = (rect6.color == "#ff0000") ? "#0000ff" : "#ff0000"
             timerUsingSerial = true
-            var buf = serial.sendCommandAndReadResponse("FETCh?\r\n")
+            var buf = serialSendAndReadInTimer("FETCh?\r\n")
             timerUsingSerial = false
+            if (buf === null || buf.length === 0) {
+                return
+            }
             console.log("Fetched Data: " + buf)
             voltageModel.clear() // 清空现有数据
             function formatVoltage(v) {
@@ -442,9 +469,9 @@ Window {
                     var value = parseFloat(parts[2])
                     console.log("ch:", i, "type:", type, "value:", value)
                     if (type.indexOf("MV") !== -1) {
-                        voltageModel.append({ "string": "CH" + i + " Voltage: " + formatVoltage(value) })
+                        voltageModel.append({ "string": "CH" + i + "_" + type + " Voltage: " + formatVoltage(value) })
                     } else if (type.indexOf("MI") !== -1) {
-                        voltageModel.append({ "string": "CH" + i + " Current: " + formatCurrent(value) })
+                        voltageModel.append({ "string": "CH" + i + "_" + type + " Current: " + formatCurrent(value) })
                     }
                 }
              }

@@ -86,6 +86,7 @@ void MySerialPort::stopPlot() {
 }
 
 void MySerialPort::sendCommand(const QString comm) {
+    qDebug() << "serial sendCommand" << comm;
     if (!m_serial.isOpen()) {
         return;
     }

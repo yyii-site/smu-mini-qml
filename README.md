@@ -1,1 +1,1 @@
-![main_qml](Document/img/main_qml.jpg)
+![main_qml](Document/img/sum_full_channel.jpg)
