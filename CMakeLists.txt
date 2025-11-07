@@ -20,6 +20,7 @@ qt_add_qml_module(appsmu_mini_qt
         Main.qml
         SOURCES myserialport.h myserialport.cpp
         QML_FILES SmuSetFunction.qml
+        QML_FILES SmuSetTarget.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

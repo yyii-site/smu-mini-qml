@@ -211,14 +211,42 @@ Window {
         }
     }
 
+    // 通过串口发送指令的函数，避免与定时器冲突
+    function serialSendCommand(msg) {
+        while(myTimer.running && timerUsingSerial) {
+            // 等待
+        }
+        myTimer.running = false
+        serial.sendCommand(msg)
+        myTimer.running = true
+    }
+
+    function serialSendAndRead(msg) {
+        while(myTimer.running && timerUsingSerial) {
+            // 等待
+        }
+        myTimer.running = false
+        var response = serial.sendCommandAndReadResponse(msg)
+        myTimer.running = true
+        return response
+    }
+
+    function serialSendAndReadInTimer(msg) {
+        var response = serial.sendCommandAndReadResponse(msg)
+        return response
+    }
+
     // SMU 工作模式
     Rectangle {
         id: rect2
         anchors.top: rect1.top
         anchors.left: rect1.right
 
+        width: 100
+        height: 150
+
         Text {
-            id: name
+            id: rect2_name
             text: qsTr("SMU 工作模式")
         }
 
@@ -249,75 +277,135 @@ Window {
         }
     }
 
-    // 当 SumChannelControl 发出信号，槽函数通过串口发出指令
+    // 当 SmuSetFunction 发出信号，槽函数通过串口发出指令
     Connections {
         target: smuChannel0Function
-        onFunctionChanged: msg => {
+        function onFunctionChanged(msg) {
             serialSendCommand(msg)
         }
     }
     Connections {
         target: smuChannel1Function
-        onFunctionChanged: msg => {
+        function onFunctionChanged(msg) {
             serialSendCommand(msg)
         }
     }
     Connections {
         target: smuChannel2Function
-        onFunctionChanged: msg => {
+        function onFunctionChanged(msg) {
             serialSendCommand(msg)
         }
     }
     Connections {
         target: smuChannel3Function
-        onFunctionChanged: (msg) => {
+        function onFunctionChanged(msg) {
             serialSendCommand(msg)
         }
     }
 
-    function serialSendCommand(msg) {
-        while(myTimer.running && timerUsingSerial) {
-            // 等待
+    Rectangle {
+        id: rect3
+        anchors.top: rect2.bottom
+        anchors.left: rect2.left
+
+        width: 100
+        height: 150
+
+        Text {
+            id: rect4_name
+            text: qsTr("SMU 目标电压电流")
         }
-        myTimer.running = false
-        serial.sendCommand(msg)
-        myTimer.running = true
-    }
 
-    function serialSendAndRead(msg) {
-        while(myTimer.running && timerUsingSerial) {
-            // 等待
+        Column {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
+
+            SmuSetTarget {
+                id: smuChannel0Target
+                channelNum: 0
+            }
+
+            SmuSetTarget {
+                id: smuChannel1Target
+                channelNum: 1
+            }
+
+            SmuSetTarget {
+                id: smuChannel2Target
+                channelNum: 2
+            }
+
+            SmuSetTarget {
+                id: smuChannel3Target
+                channelNum: 3
+            }
         }
-        myTimer.running = false
-        var response = serial.sendCommandAndReadResponse(msg)
-        myTimer.running = true
-        return response
     }
 
-    function serialSendAndReadInTimer(msg) {
-        var response = serial.sendCommandAndReadResponse(msg)
-        return response
+    // 当 SmuSetTarget 发出信号，槽函数通过串口发出指令
+    Connections {
+        target: smuChannel0Target
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
     }
-
+    Connections {
+        target: smuChannel1Target
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel2Target
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel3Target
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
 
     // 查询电流范围
     Rectangle {
-        id: rect3
-        height: 50
+        id: rect4
+        height: 100
         anchors.top: rect1.bottom
+        anchors.left: rect1.left
         // 发送模式查询指令并解析和显示返回状态
+        // 显示当前电流范围
+
+        Column {
+            id: txt_current_range
+            anchors.margins: 10
+            Text {
+                id: txt_current0_range
+                text: "CH0 Range: "
+            }
+            Text {
+                id: txt_current1_range
+                text: "CH1 Range: "
+            }
+            Text {
+                id: txt_current2_range
+                text: "CH2 Range: "
+            }
+            Text {
+                id: txt_current3_range
+                text: "CH3 Range: "
+            }
+        }
+
         Button {
             id: btn_query_current_range
+            anchors.top: txt_current_range.bottom
+            anchors.left: parent.left
             text: "查询电流范围"
             width: 80
             anchors.margins: 5
-            // 显示当前电流范围
-            Text {
-                id: txt_current_range
-                anchors.bottom: btn_query_current_range.bottom
-                anchors.left: btn_query_current_range.right
-                text: ""
-            }
             onClicked: {
                 var range0 = serialSendAndRead(":CHANnel0:CURRent:RANGe?\r\n")
                 console.log("Ch0 current range: " + range0)
@@ -327,114 +415,20 @@ Window {
                 console.log("Ch2 current range: " + range2)
                 var range3 = serialSendAndRead(":CHANnel3:CURRent:RANGe?\r\n")
                 console.log("Ch3 current range: " + range3)
-                txt_current_range.text = "CH0:" + range0 + " CH1:" + range1 + " CH2:" + range2 + " CH3:" + range3
-            }
-        }
-    }
-
-    // 目标电压设置
-    Rectangle {
-        id: rect4
-        width: 200
-        height: 50
-        anchors.top: rect3.bottom
-        TextField {
-            id: num_voltage
-            width: 50
-            anchors.margins: 5
-            placeholderText: "Voltage"
-            validator: DoubleValidator {
-                bottom: -10.0
-                top: 10.0
-            }
-
-            onTextChanged: {
-                // 处理输入变化
-                if (text.length > 0) {
-                    let value = parseFloat(text)
-                    if (!isNaN(value)) {
-                        console.log("Current float value: ", value)
-                    } else {
-                        console.log("Invalid float input")
-                    }
-                }
-            }
-        }
-        Button {
-            id: btn_voltage
-            text: "目标电压V"
-            width: 80
-            anchors.left: num_voltage.right
-            anchors.margins: 5
-            onClicked: {
-                if (num_voltage.text.length > 0) {
-                    let value = parseFloat(num_voltage.text)
-                    if (!isNaN(value)) {
-                        console.log("Current float value: ", value)
-                        serialSendCommand(":CHANnel0:VOLTage:LEVel " + value + " \r\n")
-                    } else {
-                        console.log("Invalid float input")
-                    }
-                }
-            }
-        }
-    }
-
-    // 目标电流设置
-    Rectangle {
-        id: rect5
-        width: 200
-        height: 50
-        anchors.top: rect4.top
-        anchors.left: rect4.right
-        TextField {
-            id: num_current
-            width: 50
-            anchors.margins: 5
-            placeholderText: "Current"
-            validator: DoubleValidator {
-                bottom: 0.0
-                top: 100.0
-            }
-
-            onTextChanged: {
-                // 处理输入变化
-                if (text.length > 0) {
-                    let value = parseFloat(text)
-                    if (!isNaN(value)) {
-                        console.log("Current float value: ", value)
-                    } else {
-                        console.log("Invalid float input")
-                    }
-                }
-            }
-        }
-        Button {
-            id: btn_current
-            text: "目标电流A"
-            width: 80
-            anchors.left: num_current.right
-            anchors.margins: 5
-            onClicked: {
-                if (num_current.text.length > 0) {
-                    let value = parseFloat(num_current.text)
-                    if (!isNaN(value)) {
-                        console.log("Current float value: ", value)
-                        serialSendCommand(":CHANnel0:CURRent:LEVel " + value + " \r\n")
-                    } else {
-                        console.log("Invalid float input")
-                    }
-                }
+                txt_current0_range.text = "CH0 Range:" + range0
+                txt_current1_range.text = "CH1 Range:" + range1
+                txt_current2_range.text = "CH2 Range:" + range2
+                txt_current3_range.text = "CH3 Range:" + range3
             }
         }
     }
 
     // 定时器显示
     Rectangle {
-        id: rect6
+        id: rect5
         width: 50
         height: 10
-        anchors.top: rect5.bottom
+        anchors.top: rect4.bottom
         visible: false
     }
 
@@ -445,7 +439,7 @@ Window {
         repeat: true
         running: true
         onTriggered: {
-            rect6.color = (rect6.color == "#ff0000") ? "#0000ff" : "#ff0000"
+            rect5.color = (rect5.color == "#ff0000") ? "#0000ff" : "#ff0000"
             timerUsingSerial = true
             var buf = serialSendAndReadInTimer("FETCh?\r\n")
             timerUsingSerial = false
@@ -479,8 +473,8 @@ Window {
     }
 
     Rectangle {
-        id: rect7
-        anchors.top: rect6.bottom
+        id: rect6
+        anchors.top: rect5.bottom
 
 
         // 用于存储电压显示的模型
