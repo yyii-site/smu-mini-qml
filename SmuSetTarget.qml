@@ -29,8 +29,8 @@ Item {
             anchors.margins: 5
             placeholderText: "目标电压"
             validator: DoubleValidator {
-                bottom: -10.0
-                top: 10.0
+                bottom: -11.0
+                top: 11.0
             }
         }
         Button {

@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls
 
 Window {
-    width: 640
-    height: 480
+    width: 960
+    height: 600
     visible: true
     title: qsTr("Hello World")
 
@@ -13,7 +13,7 @@ Window {
     // 串口参数
     Rectangle {
         id: rect1
-        width: 200
+        width: 300
         height: 200
 
         // 串口号
@@ -303,6 +303,7 @@ Window {
         }
     }
 
+    // SMU 目标电压电流
     Rectangle {
         id: rect3
         anchors.top: rect2.bottom
@@ -312,7 +313,7 @@ Window {
         height: 150
 
         Text {
-            id: rect4_name
+            id: rect3_name
             text: qsTr("SMU 目标电压电流")
         }
 
@@ -342,8 +343,6 @@ Window {
             }
         }
     }
-
-    // 当 SmuSetTarget 发出信号，槽函数通过串口发出指令
     Connections {
         target: smuChannel0Target
         function onTargetChanged(msg) {
@@ -369,9 +368,75 @@ Window {
         }
     }
 
-    // 查询电流范围
+
+    // SMU 保护电压电流
     Rectangle {
         id: rect4
+        anchors.top: rect3.bottom
+        anchors.left: rect3.left
+
+        width: 200
+        height: 150
+
+        Text {
+            id: rect4_name
+            text: qsTr("SMU 目标电压电流")
+        }
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 10
+            spacing: 10
+
+            SmuSetProtection {
+                id: smuChannel0Protection
+                channelNum: 0
+            }
+
+            SmuSetProtection {
+                id: smuChannel1Protection
+                channelNum: 1
+            }
+
+            SmuSetProtection {
+                id: smuChannel2Protection
+                channelNum: 2
+            }
+
+            SmuSetProtection {
+                id: smuChannel3Protection
+                channelNum: 3
+            }
+        }
+    }
+    Connections {
+        target: smuChannel0Protection
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel1Protection
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel2Protection
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+    Connections {
+        target: smuChannel3Protection
+        function onTargetChanged(msg) {
+            serialSendCommand(msg)
+        }
+    }
+
+    // 查询电流范围
+    Rectangle {
+        id: rect5
         height: 100
         anchors.top: rect1.bottom
         anchors.left: rect1.left
@@ -425,7 +490,7 @@ Window {
 
     // 定时器显示
     Rectangle {
-        id: rect5
+        id: rect6
         width: 50
         height: 10
         anchors.top: rect4.bottom
@@ -439,7 +504,7 @@ Window {
         repeat: true
         running: true
         onTriggered: {
-            rect5.color = (rect5.color == "#ff0000") ? "#0000ff" : "#ff0000"
+            rect6.color = (rect6.color == "#ff0000") ? "#0000ff" : "#ff0000"
             timerUsingSerial = true
             var buf = serialSendAndReadInTimer("FETCh?\r\n")
             timerUsingSerial = false
@@ -449,10 +514,15 @@ Window {
             console.log("Fetched Data: " + buf)
             voltageModel.clear() // 清空现有数据
             function formatVoltage(v) {
-                return 0.001*v.toFixed(6) + " V"
+                v = v - 7535960
+                v = v * 1.491210803524029e-6
+                return v.toFixed(6) + " V"
             }
+            // 2mA 档校准的系数
             function formatCurrent(i) {
-                return 0.001*i.toFixed(6) + " A"
+                i = i - 7544410
+                i = i * 2.991199535114993e-7
+                return i.toFixed(6) + " mA"
             }
 
             var measurements = buf.split(",")
@@ -473,8 +543,8 @@ Window {
     }
 
     Rectangle {
-        id: rect6
-        anchors.top: rect5.bottom
+        id: rect7
+        anchors.top: rect6.bottom
 
 
         // 用于存储电压显示的模型
@@ -490,7 +560,7 @@ Window {
                 model: voltageModel
                 delegate: Text {
                     text: modelData
-                    font.pointSize: 15
+                    font.pointSize: 12
                     padding: 2
                 }
             }
